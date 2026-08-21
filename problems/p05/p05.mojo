@@ -38,7 +38,8 @@ def broadcast_add(
     var size = Int(size_dev)
     var row = thread_idx.y
     var col = thread_idx.x
-    # FILL ME IN (roughly 2 lines)
+    if row < SIZE and col < SIZE:
+        output[row, col] = a[col] + b[row]
 
 
 # ANCHOR_END: broadcast_add
