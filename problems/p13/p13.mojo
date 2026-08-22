@@ -41,7 +41,23 @@ def conv_1d_simple(
 ):
     var global_i = block_dim.x * block_idx.x + thread_idx.x
     var local_i = thread_idx.x
-    # FILL ME IN (roughly 14 lines)
+
+    var shared = stack_allocation[dtype=dtype, address_space=AddressSpace.SHARED](row_major[TPB]())
+    if global_i < SIZE:
+        shared[local_i] = a[global_i]
+
+    var filter = stack_allocation[dtype=dtype, address_space=AddressSpace.SHARED](row_major[CONV]())
+    if global_i < CONV:
+        filter[local_i] = b[global_i]
+    barrier()
+
+    if global_i < SIZE:
+        var local_sum: output.ElementType = 0
+        comptime for j in range(CONV):
+            if local_i + j < SIZE:
+                local_sum += shared[local_i + j] * filter[j]
+
+        output[global_i] = local_sum
 
 
 # ANCHOR_END: conv_1d_simple
