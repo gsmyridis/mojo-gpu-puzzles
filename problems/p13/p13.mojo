@@ -82,7 +82,34 @@ def conv_1d_block_boundary(
 ):
     var global_i = block_dim.x * block_idx.x + thread_idx.x
     var local_i = thread_idx.x
-    # FILL ME IN (roughly 18 lines)
+
+    var shared_a = stack_allocation[dtype=dtype, address_space=AddressSpace.SHARED](row_major[TPB + CONV_2 - 1]())
+    var shared_b = stack_allocation[dtype=dtype, address_space=AddressSpace.SHARED](row_major[CONV_2]())
+
+    if local_i < CONV_2:
+        shared_b[local_i] = b[local_i]
+
+    if local_i < SIZE_2:
+        shared_a[local_i] = a[global_i]
+    else:
+        shared_a[local_i] = 0
+
+    if local_i < CONV_2 - 1:
+        var next_idx = TPB + global_i
+        if next_idx < SIZE_2:
+            shared_a[TPB + local_i] = a[next_idx]
+        else:
+            shared_a[TPB + local_i] = 0
+
+    barrier()
+
+    if local_i < SIZE_2:
+        var local_sum: output.ElementType = 0
+        for j in range(CONV_2):
+            if local_i + j < SIZE_2:
+                local_sum += shared_a[local_i + j] * shared_b[j]
+
+        output[global_i] = local_sum
 
 
 # ANCHOR_END: conv_1d_block_boundary
