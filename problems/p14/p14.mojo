@@ -38,7 +38,33 @@ def prefix_sum_simple(
     var size = Int(size_dev)
     var global_i = block_dim.x * block_idx.x + thread_idx.x
     var local_i = thread_idx.x
-    # FILL ME IN (roughly 18 lines)
+
+    var shared_a = stack_allocation[
+        dtype=dtype, address_space=AddressSpace.SHARED
+    ](row_major[SIZE]())
+
+    if global_i < SIZE:
+        shared_a[local_i] = a[global_i]
+
+    barrier()
+
+    var offset: Int = 1
+    for _ in range(Int(log2(Scalar[dtype](TPB)))):
+        var current_val: output.ElementType = 0
+        if local_i >= offset and local_i <= size:
+            current_val = shared_a[local_i - offset]
+
+        barrier()
+
+        if global_i >= offset and global_i <= size:
+            shared_a[global_i] += current_val
+
+        barrier()
+
+        offset *= 2
+
+    if global_i <= size:
+        output[global_i] = shared_a[global_i]
 
 
 # ANCHOR_END: prefix_sum_simple
